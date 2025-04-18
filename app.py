@@ -420,4 +420,4 @@ if __name__ == '__main__':
             f.write('1')
     except Exception as e:
         print(f"Warning: Could not enable IP forwarding: {str(e)}")
-    app.run(host='0.0.0.0', port=888)
+    app.run(host='0.0.0.0', port=888, debug=False)
