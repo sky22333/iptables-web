@@ -134,9 +134,8 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    // 登录成功
-                    alert('登录成功！');
-                    localStorage.setItem('token', result.token); // 保存 JWT Token
+                     // 登录保存 JWT Token
+                    localStorage.setItem('token', result.token);
                     
                     // 创建一个表单进行POST请求，确保携带token
                     const form = document.createElement('form');
