@@ -93,7 +93,6 @@
     <script>
         // 页面加载时检查cookie中的token
         document.addEventListener('DOMContentLoaded', function() {
-            // 获取cookie中的token
             function getCookie(name) {
                 const value = `; ${document.cookie}`;
                 const parts = value.split(`; ${name}=`);
@@ -101,10 +100,8 @@
                 return null;
             }
             
-            // 从cookie中获取token
             const tokenFromCookie = getCookie('auth_token');
-            
-            // 如果cookie中有token，将其存储到localStorage中
+        
             if (tokenFromCookie) {
                 localStorage.setItem('token', tokenFromCookie);
             }
@@ -112,7 +109,6 @@
         
         // 添加请求拦截器，确保所有API请求都带有Authorization头部
         function fetchWithAuth(url, options = {}) {
-            // 获取存储的token
             const token = localStorage.getItem('token');
             
             // 如果没有token，重定向到登录页面
@@ -121,19 +117,15 @@
                 return Promise.reject('未登录');
             }
             
-            // 确保options.headers存在
             if (!options.headers) {
                 options.headers = {};
             }
             
-            // 添加Authorization头部
             options.headers['Authorization'] = `Bearer ${token}`;
             
-            // 执行fetch请求
             return fetch(url, options);
         }
         
-        // 监听模式切换
         document.querySelectorAll('input[name="mode"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 const specificPortInput = document.getElementById('specificPortInput');
@@ -144,26 +136,24 @@
             });
         });
 
-        let allRules = []; // 存储所有规则
-        let selectedPorts = new Set(); // 存储已选中的端口
+        let allRules = [];
+        let selectedPorts = new Set();
 
         // 获取所有规则
         function loadRules() {
             fetchWithAuth('/api/rules')
                 .then(response => response.json())
                 .then(data => {
-                    allRules = data; // 保存所有规则
-                    displayRules(data); // 显示规则
+                    allRules = data;
+                    displayRules(data);
                 })
                 .catch(error => {
                     console.error('加载规则失败:', error);
                     if (error === '未登录') {
-                        // 已在fetchWithAuth中处理重定向
                     }
                 });
         }
 
-        // 显示规则
         function displayRules(rules) {
             const tbody = document.getElementById('rulesList');
             tbody.innerHTML = '';
@@ -188,10 +178,10 @@
 
         // 更新已选端口数量
         function updateSelectedCount() {
-            selectedPorts.clear(); // 清空已选端口集合
+            selectedPorts.clear();
             const selectedCheckboxes = document.querySelectorAll('#rulesList input[type="checkbox"]:checked');
             selectedCheckboxes.forEach(checkbox => {
-                selectedPorts.add(checkbox.value); // 将选中的端口添加到集合中
+                selectedPorts.add(checkbox.value);
             });
             document.getElementById('selectedCount').textContent = `已选 ${selectedPorts.size} 个端口`;
         }
@@ -328,14 +318,14 @@
         // 删除选中的规则
         function deleteSelected() {
             const deleteButton = document.getElementById('deleteButton');
-            deleteButton.disabled = true; // 禁用按钮
+            deleteButton.disabled = true;
             const selected = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
                 .map(cb => cb.value)
                 .filter(val => val);
             
             if (selected.length === 0) {
                 alert('请选择要删除的规则！');
-                deleteButton.disabled = false; // 恢复按钮
+                deleteButton.disabled = false;
                 return;
             }
         
@@ -366,24 +356,20 @@
                     alert('批量删除规则失败，请检查网络连接或重新登录');
                 })
                 .finally(() => {
-                    deleteButton.disabled = false; // 恢复按钮
+                    deleteButton.disabled = false;
                 });
             } else {
-                deleteButton.disabled = false; // 恢复按钮
+                deleteButton.disabled = false;
             }
         }
 
-        // 全选/取消全选
         function toggleAll(checkbox) {
             const checkboxes = document.querySelectorAll('#rulesList input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = checkbox.checked);
-            updateSelectedCount(); // 更新已选端口数量
+            updateSelectedCount();
         }
 
-        // 页面加载完成后获取规则列表
         document.addEventListener('DOMContentLoaded', loadRules);
-
-        // 添加搜索框的回车事件监听
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 searchRules();

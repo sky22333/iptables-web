@@ -6,16 +6,13 @@ import json
 from contextlib import closing
 from auth import login, authenticate_request
 
-# 明确指定静态文件夹路径
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-# 注册登录路由
 app.route('/api/login', methods=['POST'])(login)
-# 注册鉴权中间件
 app.before_request(authenticate_request)
 
 class IPTablesManager:
     def __init__(self):
-        self.rules = {}  # 存储当前的转发规则
+        self.rules = {}
         self.default_start_port = 1000  # 设置默认起始端口
         # 默认保留的系统端口
         self.reserved_ports = {22, 80, 53, 21, 25, 23, 110, 143, 888}
@@ -30,9 +27,7 @@ class IPTablesManager:
             if os.path.exists(self.rules_file):
                 with open(self.rules_file, 'r') as f:
                     saved_rules = json.load(f)
-                # 清空现有规则
                 self.clear_all_iptables_rules()
-                # 重新应用已保存的规则
                 for port, rule in saved_rules.items():
                     self.add_rule(
                         rule['local_port'],
@@ -66,16 +61,13 @@ class IPTablesManager:
     def is_port_open(self, port):
         """检查端口是否可用（未被任何服务占用）"""
         try:
-            # 检查 TCP 端口
             with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
                 if sock.connect_ex(('127.0.0.1', port)) == 0:
-                    return False  # 端口被占用
+                    return False
             
-            # 检查是否是保留端口
             if port in self.reserved_ports:
                 return False
 
-            # 检查是否被 iptables 规则占用
             return not self.is_port_in_use_iptables(port)
         except:
             return False
@@ -189,9 +181,8 @@ class IPTablesManager:
         used_ports = set()
         
         try:
-            # 检查 TCP 端口
             output = subprocess.check_output(['netstat', '-tln']).decode()
-            for line in output.split('\n')[2:]:  # 跳过头部
+            for line in output.split('\n')[2:]:
                 if line.strip():
                     parts = line.split()
                     if len(parts) >= 4:
@@ -203,15 +194,12 @@ class IPTablesManager:
         except:
             pass
         
-        # 添加已知的保留端口
         used_ports.update(self.reserved_ports)
         
-        # 添加已经被 iptables 规则使用的端口
         used_ports.update(int(port) for port in self.rules.keys())
         
         return sorted(list(used_ports))
 
-# 创建IPTablesManager实例
 iptables_manager = IPTablesManager()
 
 @app.route('/api/rules', methods=['GET'])
@@ -228,13 +216,10 @@ def add_rules():
         ip_list = data.get('ip_list', '').strip().split('\n')
         port_data = data.get('port_data', {})
         
-        # 验证输入
         if not ip_list or not ip_list[0]:
             return jsonify({'success': False, 'message': '请输入落地IP和端口列表'})
 
-        # 根据不同模式处理端口分配
         if mode == 'specific':
-            # 指定起始端口自动分配模式
             start_port = port_data.get('startPort')
             if not start_port:
                 return jsonify({'success': False, 'message': '请输入起始端口'})
@@ -383,10 +368,8 @@ def index():
     # 检查用户是否已登录（通过鉴权中间件）
     auth_header = request.headers.get('Authorization')
     
-    # 如果是POST请求，检查是否有token参数
     if request.method == 'POST' and request.form.get('token'):
         token = request.form.get('token')
-        # 设置cookie并重定向到GET请求
         response = redirect('/')
         response.set_cookie('auth_token', token, httponly=True)
         return response
@@ -394,14 +377,11 @@ def index():
     # 检查cookie中是否有token
     token_from_cookie = request.cookies.get('auth_token')
     if token_from_cookie:
-        # 如果cookie中有token，则视为已登录
         return send_from_directory(app.static_folder, 'index.html')
     
-    # 检查Authorization头
     if auth_header and auth_header.startswith("Bearer "):
         return send_from_directory(app.static_folder, 'index.html')
     
-    # 未登录，重定向到登录页面
     return redirect('/static/login.html')
 
 if __name__ == '__main__':
@@ -411,10 +391,8 @@ if __name__ == '__main__':
         print("Error: This application must be run with root privileges")
         exit(1)
     
-    # 确保数据目录存在
     os.makedirs('/app/data', exist_ok=True)
     
-    # 启用IP转发
     try:
         with open('/proc/sys/net/ipv4/ip_forward', 'w') as f:
             f.write('1')

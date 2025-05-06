@@ -1,9 +1,11 @@
 ### 基于`iptables`的批量管理端口转发面板
 
-练手学习的小项目，`python`语言。
+练手的小项目
 
 #### `Docker`部署
 > 请修改环境变量用户名和密码
+
+> 默认端口`888`
 ```
 docker run -d \
   --name iptables-web \

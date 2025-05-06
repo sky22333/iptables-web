@@ -4,8 +4,7 @@ import secrets
 import datetime
 from flask import request, jsonify, abort
 
-# 动态生成随机密钥
-JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))  # 32字节的随机密钥
+JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
 
 # 从环境变量获取用户名和密码
@@ -21,7 +20,7 @@ def generate_token(username):
     """
     payload = {
         'username': username,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # Token有效期2小时
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=5)
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token
