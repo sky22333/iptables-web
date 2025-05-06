@@ -5,7 +5,7 @@
 #### `Docker`部署
 > 请修改环境变量用户名和密码
 
-> 默认端口`888`
+> 面板端口`888`
 ```
 docker run -d \
   --name iptables-web \
