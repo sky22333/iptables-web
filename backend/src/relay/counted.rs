@@ -74,6 +74,7 @@ impl AsyncWrite for CountedTcpStream {
 
 #[cfg(target_os = "linux")]
 mod linux_raw {
+    use std::io::Result;
     use std::os::unix::io::{AsRawFd, RawFd};
     use std::task::{Context, Poll};
 
