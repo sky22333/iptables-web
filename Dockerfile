@@ -1,14 +1,27 @@
-FROM python:3.8-alpine
+# syntax=docker/dockerfile:1
 
-RUN apk update && \
-    apk add --no-cache iptables net-tools && \
-    rm -rf /var/cache/apk/*
+FROM node:22-alpine AS web
+WORKDIR /web
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
 
-COPY . .
+FROM rust:1.85-bookworm AS builder
+WORKDIR /app
+COPY backend/Cargo.toml backend/Cargo.lock* backend/build.rs ./
+COPY backend/migrations ./migrations
+COPY backend/src ./src
+COPY --from=web /web/dist ../frontend/dist
+ENV SKIP_WEB_BUILD=1
+RUN cargo build --release
 
-RUN pip install --no-cache-dir -r requirements.txt && \
-    mkdir -p /app/data
-
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=builder /app/target/release/realm-web /usr/local/bin/realm-web
+RUN mkdir -p /app/data
+ENV DATA_DIR=/app/data
 EXPOSE 888
-
-CMD ["python3", "app.py"]
+ENTRYPOINT ["realm-web"]

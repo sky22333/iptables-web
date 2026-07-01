@@ -1,5 +1,3 @@
-.git
-.github
-docker-compose.yml
-Dockerfile
-README.md
+target/
+data/
+.env

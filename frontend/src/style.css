@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #f5f7fa;
+  --color-foreground: #111827;
+  --color-card: #ffffff;
+  --color-card-foreground: #111827;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #6b7280;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #2563eb;
+  --color-destructive: #dc2626;
+  --color-success: #059669;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  input[type='checkbox'] {
+    @apply h-3.5 w-3.5 rounded border border-input accent-primary;
+  }
+}
+
+@layer utilities {
+  .panel {
+    @apply bg-card border border-border rounded-md;
+  }
+  .panel-header {
+    @apply px-4 py-3 border-b border-border text-sm font-medium text-foreground;
+  }
+  .panel-body {
+    @apply p-4;
+  }
+}

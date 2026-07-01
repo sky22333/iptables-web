@@ -1,12 +1,14 @@
 services:
-  iptables-web:
+  realm-web:
     build: .
-    container_name: iptables-web
-    privileged: true
+    container_name: realm-web
     network_mode: host
-    restart: always
+    restart: unless-stopped
     environment:
-      - AUTH_USERNAME=admin123
-      - AUTH_PASSWORD=admin123
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: admin123
+      JWT_SECRET: change-me-in-production
+      DATA_DIR: /app/data
+      PANEL_PORT: "888"
     volumes:
       - ./data:/app/data
