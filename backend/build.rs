@@ -11,6 +11,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../frontend/vite.config.ts");
     println!("cargo:rerun-if-changed=../frontend/index.html");
     println!("cargo:rerun-if-changed=../frontend/src");
+    println!("cargo:rerun-if-changed=../frontend/dist/index.html");
 
     if std::env::var("SKIP_WEB_BUILD").is_ok() {
         assert!(

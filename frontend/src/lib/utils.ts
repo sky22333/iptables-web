@@ -28,3 +28,8 @@ export function quotaPeriodLabel(period: string): string {
       return '—'
   }
 }
+
+/** 输入框是否有有效值（兼容 number / string）。 */
+export function hasInputValue(v: string | number | null | undefined): boolean {
+  return String(v ?? '').trim().length > 0
+}

@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const classes = computed(() =>
   cn(
-    'inline-flex items-center rounded px-1.5 py-0.5 text-xs border font-normal',
+    'inline-flex items-center rounded-md px-1.5 py-0.5 text-xs border font-normal',
     props.variant === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
     props.variant === 'warning' && 'border-amber-200 bg-amber-50 text-amber-700',
     props.variant === 'danger' && 'border-red-200 bg-red-50 text-red-700',

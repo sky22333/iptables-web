@@ -3,10 +3,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Strong type for a local listen port.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct LocalPort(pub u16);
-
 /// Traffic quota reset period.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -78,17 +74,6 @@ pub struct RuleRecord {
     pub period_start: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// Input for creating a single forwarding rule.
-#[derive(Debug, Clone)]
-pub struct NewRule {
-    pub local_port: u16,
-    pub listen_host: String,
-    pub target_host: String,
-    pub target_port: u16,
-    pub quota_bytes: Option<i64>,
-    pub quota_period: QuotaPeriod,
 }
 
 /// Target endpoint parsed from `host:port` lines.

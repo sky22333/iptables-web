@@ -10,16 +10,16 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 </script>
 
 <template>
-  <div class="inline-flex rounded-md border border-border bg-muted p-0.5">
+  <div class="inline-flex rounded-md border border-input bg-muted p-0.5">
     <button
       v-for="opt in options"
       :key="opt.value"
       type="button"
       :class="
         cn(
-          'px-3 py-1.5 text-xs font-medium rounded-[4px] transition-colors',
+          'rounded-sm px-3 py-1.5 text-xs font-medium transition-colors',
           modelValue === opt.value
-            ? 'bg-card text-foreground border border-border'
+            ? 'bg-background text-foreground shadow-sm'
             : 'text-muted-foreground hover:text-foreground',
         )
       "

@@ -12,7 +12,6 @@ pub struct Claims {
 
 pub struct TokenPair {
     pub token: String,
-    pub expires_in_hours: i64,
 }
 
 pub fn issue_token(username: &str, secret: &str, expire_hours: i64) -> anyhow::Result<TokenPair> {
@@ -26,10 +25,7 @@ pub fn issue_token(username: &str, secret: &str, expire_hours: i64) -> anyhow::R
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
     )?;
-    Ok(TokenPair {
-        token,
-        expires_in_hours: expire_hours,
-    })
+    Ok(TokenPair { token })
 }
 
 pub fn validate_token(token: &str, secret: &str) -> anyhow::Result<Claims> {

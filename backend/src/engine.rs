@@ -20,10 +20,6 @@ impl ForwardEngine {
         }
     }
 
-    pub fn active_ports(&self) -> Vec<u16> {
-        self.tasks.keys().copied().collect()
-    }
-
     pub async fn start_rule(
         &mut self,
         rule: &RuleRecord,

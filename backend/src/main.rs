@@ -2,6 +2,7 @@
 
 mod auth;
 mod config;
+mod db;
 mod domain;
 mod embed;
 mod engine;
@@ -10,6 +11,7 @@ mod routes;
 mod services;
 mod state;
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -26,15 +28,23 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "realm_web=info,tower_http=info".into()),
+                .unwrap_or_else(|_| "realm_web=info,tower_http=info,realm_core=warn".into()),
         )
         .init();
+    tracing_log::LogTracer::init().ok();
+
+    realm_core::dns::build(None, None);
+    realm_core::dns::force_init();
 
     let config = Arc::new(AppConfig::from_env()?);
-    info!(port = config.panel_port, "正在启动 realm-web");
-
     let db = connect_db(&config).await?;
-    sqlx::migrate!("./migrations").run(&db).await?;
+    db::init_schema(&db).await?;
+
+    info!(
+        port = config.panel_port,
+        data_dir = %config.data_dir.display(),
+        "正在启动 realm-web"
+    );
 
     let traffic = Arc::new(TrafficService::new(db.clone()));
     let engine = ForwardEngine::new();
@@ -47,15 +57,22 @@ async fn main() -> anyhow::Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", config.panel_port)).await?;
     info!(port = config.panel_port, "管理面板已就绪");
 
-    axum::serve(listener, routes::router(state)).await?;
+    axum::serve(
+        listener,
+        routes::router(state).into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
     Ok(())
 }
 
 async fn connect_db(config: &AppConfig) -> anyhow::Result<sqlx::SqlitePool> {
-    let options: SqliteConnectOptions = config.database_url.parse()?;
+    let db_path = config.data_dir.join("realm-web.db");
+    let options = SqliteConnectOptions::new()
+        .filename(&db_path)
+        .create_if_missing(true);
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
-        .connect_with(options.create_if_missing(true))
+        .connect_with(options)
         .await?;
 
     sqlx::query("PRAGMA journal_mode = WAL")
@@ -64,10 +81,12 @@ async fn connect_db(config: &AppConfig) -> anyhow::Result<sqlx::SqlitePool> {
     sqlx::query("PRAGMA busy_timeout = 5000")
         .execute(&pool)
         .await?;
+    sqlx::query("PRAGMA foreign_keys = ON")
+        .execute(&pool)
+        .await?;
     Ok(pool)
 }
 
-/// 启动时从数据库恢复所有启用中的转发规则。
 async fn bootstrap_relays(state: &AppState) -> anyhow::Result<()> {
     let rules = state.rules.list().await?;
     traffic::hydrate_meters(state, &rules).await?;
@@ -82,7 +101,10 @@ async fn bootstrap_relays(state: &AppState) -> anyhow::Result<()> {
 mod traffic {
     use super::*;
 
-    pub async fn hydrate_meters(state: &AppState, rules: &[domain::RuleRecord]) -> anyhow::Result<()> {
+    pub async fn hydrate_meters(
+        state: &AppState,
+        rules: &[domain::RuleRecord],
+    ) -> anyhow::Result<()> {
         for rule in rules {
             state.traffic.meter_for(rule).await;
         }

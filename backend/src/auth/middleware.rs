@@ -26,7 +26,7 @@ pub async fn auth_middleware(
         _ => {
             return (
                 StatusCode::UNAUTHORIZED,
-                Json(serde_json::json!({"error": "未提供有效的认证令牌"})),
+                Json(serde_json::json!({"message": "未提供有效的认证令牌"})),
             )
                 .into_response();
         }
@@ -39,7 +39,7 @@ pub async fn auth_middleware(
         }
         Err(_) => (
             StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({"error": "令牌无效或已过期"})),
+            Json(serde_json::json!({"message": "令牌无效或已过期"})),
         )
             .into_response(),
     }

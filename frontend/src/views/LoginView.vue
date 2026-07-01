@@ -20,7 +20,7 @@ async function onSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const res = await api.login(username.value.trim(), password.value)
+    const res = await api.login(username.value.trim(), password.value.trim())
     if (!res.success || !res.token) {
       error.value = res.message ?? '登录失败'
       return
@@ -36,27 +36,25 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="min-h-dvh flex items-center justify-center bg-background p-4">
-    <div class="panel w-full max-w-sm">
-      <div class="panel-header text-center">Realm 转发面板</div>
-      <div class="panel-body space-y-4">
-        <p class="text-sm text-muted-foreground text-center">管理 TCP / UDP 端口转发</p>
-        <form class="space-y-3" @submit.prevent="onSubmit">
-          <div class="space-y-1.5">
-            <Label for="username">用户名</Label>
-            <Input id="username" v-model="username" autocomplete="username" placeholder="admin" required />
-          </div>
-          <div class="space-y-1.5">
-            <Label for="password">密码</Label>
-            <Input id="password" v-model="password" type="password" autocomplete="current-password" required />
-          </div>
-          <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
-          <Button type="submit" class="w-full" :disabled="loading">
-            <Loader2 v-if="loading" class="h-3.5 w-3.5 animate-spin" />
-            {{ loading ? '登录中…' : '登录' }}
-          </Button>
-        </form>
-      </div>
+  <div class="min-h-dvh flex items-center justify-center bg-background px-4">
+    <div class="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm">
+      <h1 class="text-lg font-medium text-center mb-1">Realm 端口转发</h1>
+      <p class="text-sm text-muted-foreground text-center mb-6">端口转发管理</p>
+      <form class="space-y-4" @submit.prevent="onSubmit">
+        <div class="space-y-2">
+          <Label for="username">用户名</Label>
+          <Input id="username" v-model="username" autocomplete="username" placeholder="用户名" required />
+        </div>
+        <div class="space-y-2">
+          <Label for="password">密码</Label>
+          <Input id="password" v-model="password" type="password" autocomplete="current-password" placeholder="密码" required />
+        </div>
+        <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+        <Button type="submit" class="w-full" :disabled="loading">
+          <Loader2 v-if="loading" class="h-4 w-4 animate-spin" />
+          {{ loading ? '登录中…' : '登录' }}
+        </Button>
+      </form>
     </div>
   </div>
 </template>

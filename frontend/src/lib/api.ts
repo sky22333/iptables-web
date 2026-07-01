@@ -68,7 +68,37 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** 检查 JWT 是否未过期（仅解析 payload，不验签）。 */
+export function isTokenValid(): boolean {
+  const token = getToken()
+  if (!token) return false
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] ?? '')) as { exp?: number }
+    if (!payload.exp) return false
+    return payload.exp * 1000 > Date.now()
+  } catch {
+    return false
+  }
+}
+
+interface RequestOptions {
+  /** 401 时不强制跳转登录页（用于登录接口） */
+  skipAuthRedirect?: boolean
+}
+
+async function parseErrorMessage(res: Response): Promise<string> {
+  try {
+    const json = await res.json()
+    if (typeof json.message === 'string') return json.message
+    if (typeof json.error === 'string') return json.error
+  } catch {
+    const text = await res.text()
+    if (text) return text
+  }
+  return `请求失败 (${res.status})`
+}
+
+async function request<T>(path: string, init?: RequestInit, options?: RequestOptions): Promise<T> {
   const headers = new Headers(init?.headers)
   if (!headers.has('Content-Type') && init?.body) {
     headers.set('Content-Type', 'application/json')
@@ -81,21 +111,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, { ...init, headers })
 
   if (res.status === 401) {
-    clearToken()
-    window.location.href = '/login'
-    throw new Error('未登录或令牌已过期')
+    const message = await parseErrorMessage(res)
+    if (!options?.skipAuthRedirect) {
+      clearToken()
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
+    }
+    throw new Error(message || '未登录或令牌已过期')
   }
 
   if (!res.ok) {
-    let message = `请求失败 (${res.status})`
-    try {
-      const json = await res.json()
-      if (json.message) message = json.message
-    } catch {
-      const text = await res.text()
-      if (text) message = text
-    }
-    throw new Error(message)
+    throw new Error(await parseErrorMessage(res))
   }
 
   if (res.status === 204) {
@@ -107,10 +134,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   login(username: string, password: string) {
-    return request<{ success: boolean; token?: string; message?: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    })
+    return request<{ success: boolean; token?: string; message?: string }>(
+      '/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      },
+      { skipAuthRedirect: true },
+    )
   },
 
   stats() {

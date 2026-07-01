@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getToken } from '@/lib/api'
+import { clearToken, isTokenValid } from '@/lib/api'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,7 +20,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const loggedIn = !!getToken()
+  if (!isTokenValid()) {
+    clearToken()
+  }
+  const loggedIn = isTokenValid()
   if (to.meta.requiresAuth && !loggedIn) {
     return { name: 'login' }
   }

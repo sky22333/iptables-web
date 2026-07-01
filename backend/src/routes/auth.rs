@@ -1,5 +1,8 @@
 //! 认证相关 API。
 
+use std::net::SocketAddr;
+
+use axum::extract::ConnectInfo;
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 
@@ -23,11 +26,31 @@ pub struct LoginResponse {
 
 pub async fn login(
     State(state): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
     Json(body): Json<LoginRequest>,
 ) -> (StatusCode, Json<LoginResponse>) {
-    if body.username != state.config.auth_username || body.password != state.config.auth_password {
+    let ip = peer.ip();
+
+    let remaining = state.login_limiter.check(ip);
+    if remaining > 0 {
         return (
-            StatusCode::UNAUTHORIZED,
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(LoginResponse {
+                success: false,
+                token: None,
+                message: Some(format!("登录尝试过多，请 {remaining} 秒后再试")),
+            }),
+        );
+    }
+
+    let username = body.username.trim();
+    let password = body.password.trim();
+
+    if username != state.config.auth_username || password != state.config.auth_password {
+        state.login_limiter.record_failure(ip);
+        tracing::warn!(%username, %ip, "登录失败");
+        return (
+            StatusCode::OK,
             Json(LoginResponse {
                 success: false,
                 token: None,
@@ -36,8 +59,10 @@ pub async fn login(
         );
     }
 
+    state.login_limiter.record_success(ip);
+
     match issue_token(
-        &body.username,
+        username,
         &state.config.jwt_secret,
         state.config.jwt_expire_hours,
     ) {

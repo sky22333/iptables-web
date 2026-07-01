@@ -1,42 +1,44 @@
-//! 带字节计数的 UDP 中继。
+//! 基于 realm_core DNS 的 UDP 转发（端口级流量统计）。
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use realm_core::dns;
+use realm_core::endpoint::{Endpoint, RemoteAddr};
+use realm_core::time::timeoutfut;
 use tokio::net::UdpSocket;
 use tokio::sync::Mutex;
 use tracing::warn;
 
 use super::TrafficMeter;
 
-const ASSOC_TIMEOUT: Duration = Duration::from_secs(30);
-
 struct Association {
     downstream: Arc<UdpSocket>,
     last_seen: Instant,
 }
 
-pub async fn run_udp(listen: SocketAddr, remote: String, meter: Arc<TrafficMeter>) {
-    let socket = Arc::new(match UdpSocket::bind(listen).await {
-        Ok(s) => s,
+pub async fn run_udp(endpoint: Endpoint, meter: Arc<TrafficMeter>) {
+    let Endpoint {
+        laddr,
+        raddr,
+        conn_opts,
+        ..
+    } = endpoint;
+
+    let socket = match UdpSocket::bind(laddr).await {
+        Ok(s) => Arc::new(s),
         Err(e) => {
-            warn!(%listen, "UDP 绑定失败: {e}");
+            warn!(%laddr, "UDP 绑定失败: {e}");
             return;
         }
-    });
+    };
 
-    let remote_addr: SocketAddr = match tokio::net::lookup_host(&remote).await {
-        Ok(mut iter) => match iter.next() {
-            Some(a) => a,
-            None => {
-                warn!(%remote, "UDP 目标解析为空");
-                return;
-            }
-        },
+    let remote_addr = match resolve_first(&raddr).await {
+        Ok(a) => a,
         Err(e) => {
-            warn!(%remote, "UDP 目标解析失败: {e}");
+            warn!(%raddr, "UDP 目标解析失败: {e}");
             return;
         }
     };
@@ -61,7 +63,8 @@ pub async fn run_udp(listen: SocketAddr, remote: String, meter: Arc<TrafficMeter
 
         let downstream = {
             let mut map = associations.lock().await;
-            map.retain(|_, a| a.last_seen.elapsed() < ASSOC_TIMEOUT);
+            let timeout = Duration::from_secs(conn_opts.associate_timeout.max(1) as u64);
+            map.retain(|_, a| a.last_seen.elapsed() < timeout);
 
             if let Some(a) = map.get_mut(&peer) {
                 a.last_seen = Instant::now();
@@ -85,8 +88,8 @@ pub async fn run_udp(listen: SocketAddr, remote: String, meter: Arc<TrafficMeter
             }
         };
 
-        if downstream.send_to(&buf[..n], remote_addr).await.is_ok() {
-            meter.add_udp_tx(n as u64);
+        if downstream.send_to(&buf[..n], remote_addr).await.is_err() {
+            warn!(%peer, "UDP 转发至目标失败");
         }
 
         let mut tasks = reply_tasks.lock().await;
@@ -98,9 +101,18 @@ pub async fn run_udp(listen: SocketAddr, remote: String, meter: Arc<TrafficMeter
                 peer,
                 meter.clone(),
                 reply_tasks.clone(),
+                conn_opts.associate_timeout,
             );
         }
     }
+}
+
+async fn resolve_first(raddr: &RemoteAddr) -> std::io::Result<SocketAddr> {
+    dns::resolve_addr(raddr)
+        .await?
+        .iter()
+        .next()
+        .ok_or_else(|| std::io::ErrorKind::NotFound.into())
 }
 
 fn spawn_reply(
@@ -109,13 +121,14 @@ fn spawn_reply(
     peer: SocketAddr,
     meter: Arc<TrafficMeter>,
     reply_tasks: Arc<Mutex<HashMap<SocketAddr, bool>>>,
+    associate_timeout: usize,
 ) {
     tokio::spawn(async move {
         let mut buf = [0u8; 65535];
         loop {
-            match tokio::time::timeout(ASSOC_TIMEOUT, downstream.recv(&mut buf)).await {
+            let recv = downstream.recv(&mut buf);
+            match timeoutfut(recv, associate_timeout).await {
                 Ok(Ok(n)) => {
-                    meter.add_udp_rx(n as u64);
                     if listen_sock.send_to(&buf[..n], peer).await.is_ok() {
                         meter.add_udp_tx(n as u64);
                     }
