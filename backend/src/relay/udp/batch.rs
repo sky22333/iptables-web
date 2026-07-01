@@ -157,9 +157,15 @@ mod io {
         }
 
         let n = recv_mul_pkts(sock, &mut msgs[..pkt_amt]).await?;
-        for (pkt, msg) in pkts.iter_mut().zip(msgs.iter()).take(n) {
-            pkt.len = msg.get_ref().nbytes() as u16;
-            pkt.peer = SocketAddr::from((*msg.get_ref().addr()).clone());
+        // `msgs`/`iovs` still borrow `pkts[..].buf` until this function returns.
+        // Copy recv metadata first, then write disjoint `Packet` fields (realm pattern).
+        let mut lens = [0u16; MAX_PACKETS];
+        for i in 0..n {
+            lens[i] = msgs[i].get_ref().nbytes() as u16;
+        }
+        for i in 0..n {
+            pkts[i].len = lens[i];
+            pkts[i].peer = SocketAddr::from(addrs[i].clone());
         }
         Ok(n)
     }
