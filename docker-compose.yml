@@ -1,12 +1,12 @@
 services:
   realm-web:
-    build: .
+    image: ghcr.io/sky22333/realm-web
     container_name: realm-web
     network_mode: host
-    restart: unless-stopped
+    restart: always
     environment:
-      AUTH_USERNAME: admin
-      AUTH_PASSWORD: password
+      AUTH_USERNAME: admin123
+      AUTH_PASSWORD: admin123
       DATA_DIR: /app/data
       PANEL_PORT: "888"
     volumes:
