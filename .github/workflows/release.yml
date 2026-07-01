@@ -1,0 +1,118 @@
+name: 发布
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 发布标签
+        default: v1.0.0
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: 前端
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: frontend/dist
+          retention-days: 3
+
+  build:
+    name: 编译 ${{ matrix.file }}
+    needs: web
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            tool: cargo
+            file: realm-web-linux-amd64
+            ext: ""
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            tool: cargo-zigbuild
+            file: realm-web-linux-arm64
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            tool: cargo
+            file: realm-web-windows-amd64.exe
+            ext: .exe
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            tool: cargo-xwin
+            file: realm-web-windows-arm64.exe
+            ext: .exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: frontend/dist
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - if: matrix.tool != 'cargo'
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev pkg-config
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+          shared-key: release
+          key: ${{ matrix.target }}
+          cache-workspace-crates: true
+          cache-on-failure: true
+      - name: 编译
+        shell: bash
+        env:
+          SKIP_WEB_BUILD: 1
+        run: |
+          cd backend
+          case "${{ matrix.tool }}" in
+            cargo-zigbuild) cargo zigbuild --release --locked --target ${{ matrix.target }} ;;
+            cargo-xwin)     cargo xwin build --release --locked --target ${{ matrix.target }} ;;
+            *)              cargo build --release --locked --target ${{ matrix.target }} ;;
+          esac
+          cp "target/${{ matrix.target }}/release/realm-web${{ matrix.ext }}" "../${{ matrix.file }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.file }}
+          path: ${{ matrix.file }}
+          retention-days: 3
+
+  release:
+    name: 发布 Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          generate_release_notes: true
+          files: assets/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,14 +1,14 @@
-# Realm 转发面板
+## Realm 转发面板
 
-基于 [realm](https://github.com/zhboner/realm) 的 TCP/UDP 端口转发管理面板。转发内核嵌入 `realm_core`（DNS + realm_io），前端构建产物嵌入单一二进制。
+基于 [realm](https://github.com/zhboner/realm) 的 TCP/UDP 端口转发管理面板。
 
 ## 功能
 
-- 批量添加转发规则（自动 / 指定起始 / 手动端口）
-- 每条规则同时转发 **TCP + UDP**（realm_core 转发栈）
-- 端口级流量统计（TCP 本地侧计量 + UDP 报文计量）与 SQLite 持久化
+- 批量添加转发规则
+- 每条规则同时转发 **TCP + UDP**
+- 端口级流量统计
 - JWT 登录保护
-- 响应式中文界面（shadcn-vue 风格）
+- 响应式中文界面
 
 ## 快速开始
 
@@ -28,17 +28,10 @@ cd backend
 cargo run
 ```
 
-首次启动时，若未设置 `AUTH_USERNAME` 与 `AUTH_PASSWORD`，程序会在终端随机生成账号密码（小写字母 + 数字）并打印，请妥善保存。
+首次启动时，若未设置 `AUTH_USERNAME` 与 `AUTH_PASSWORD`，程序会在终端随机生成账号密码，请妥善保存。
 
-面板地址：http://127.0.0.1:888
+默认面板地址：http://127.0.0.1:888
 
-### Docker
-
-```bash
-docker compose up -d --build
-```
-
-镜像基于 Alpine，BuildKit 会按当前主机架构构建（`linux/amd64` 或 `linux/arm64`）。多架构推送见 `.github/workflows/docker-ghcr.yml`。
 
 ## 环境变量
 
