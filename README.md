@@ -11,6 +11,21 @@
 - 响应式中文界面
 
 ## 快速开始
+Docker
+```
+docker run -d \
+  --name realm-web \
+  --network host \
+  --restart always \
+  -e AUTH_USERNAME=admin123 \
+  -e AUTH_PASSWORD=admin123 \
+  -e DATA_DIR=/app/data \
+  -e PANEL_PORT=888 \
+  -v ./data:/app/data \
+  ghcr.io/sky22333/realm-web
+```
+
+或者[releases](https://github.com/sky22333/realm-web/releases)页面下载二进制文件运行
 
 ### 环境要求
 
